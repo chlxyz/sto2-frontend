@@ -1,0 +1,131 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: 'Heming Variable';
+  src: url('/fonts/Heming-Variable.ttf') format('truetype-variations');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root,
+[data-theme="light"] {
+  --bg: #faf9f7;
+  --surface: #ffffff;
+  --text: #16150f;
+  --muted: #8a877e;
+  --accent: #16150f;
+  --accent-hover: #000000;
+  --accent-contrast: #faf9f7;
+  --border: #e7e4dc;
+  --shadow: 0 24px 48px -24px rgb(22 21 15 / 0.22);
+}
+
+[data-theme="dark"] {
+  --bg: #111110;
+  --surface: #1a1a18;
+  --text: #f2f0e9;
+  --muted: #97958c;
+  --accent: #f2f0e9;
+  --accent-hover: #ffffff;
+  --accent-contrast: #111110;
+  --border: #2b2b28;
+  --shadow: 0 24px 48px -24px rgb(0 0 0 / 0.7);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Heming Variable', ui-monospace, Menlo, Consolas, monospace;
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-display {
+  font-family: 'Heming Variable', ui-monospace, Menlo, Consolas, monospace;
+}
+
+.eyebrow {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+::selection {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+
+.skeleton-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-shimmer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgb(127 127 127 / 0.16), transparent);
+  animation: shimmer 1.6s infinite;
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rise {
+  animation: rise 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheet-enter {
+  animation: sheet-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes sheet-down {
+  from { transform: translateY(0); }
+  to { transform: translateY(100%); }
+}
+
+.sheet-exit {
+  animation: sheet-down 0.38s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.fade-enter {
+  animation: fade-in 0.3s ease both;
+}
+
+@keyframes fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+.fade-exit {
+  animation: fade-out 0.25s ease both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise, .sheet-enter, .sheet-exit, .fade-enter, .fade-exit, .skeleton-shimmer::after {
+    animation: none;
+  }
+}
