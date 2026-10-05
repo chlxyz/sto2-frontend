@@ -98,6 +98,7 @@ export default function OtpPage() {
             <form onSubmit={confirm} className="flex flex-col gap-4">
               <FormField
                 label="6-digit code"
+                type="password"
                 value={code}
                 onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 required

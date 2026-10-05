@@ -37,7 +37,9 @@ export default function ProfilePage() {
     if (!clean || clean === user?.display_name) return
     timer.current = setTimeout(async () => {
       try {
-        const { data } = await api.get('/user/name-suggestions', { params: { name: clean } })
+        // POST body, not a query param: query strings land in web server access
+        // logs, proxy logs and browser history. The name is personal data.
+        const { data } = await api.post('/user/name-suggestions', { name: clean })
         if (!data.includes(clean.toLowerCase().replace(/[^a-z0-9_]+/gi, ''))) {
           setTaken(true)
           setSuggestions(data)
