@@ -1,17 +1,14 @@
 import { Link } from 'react-router-dom'
-import Badge from '../atoms/Badge.jsx'
+import OrderStatusBadges from '../molecules/OrderStatusBadges.jsx'
 import Button from '../atoms/Button.jsx'
 import Price from '../atoms/Price.jsx'
-
-const statusTone = (s) => (s === 'paid' ? 'success' : s === 'cancelled' ? 'warn' : 'neutral')
 
 export default function OrderCard({ order, onCancel, cancelling }) {
   return (
     <article className="rounded-[4px] border border-[var(--border)] bg-[var(--surface)] p-6">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-bold">Order #{order.id}</h3>
-        <Badge tone={statusTone(order.status)}>{order.status}</Badge>
-        {order.is_paid && <Badge tone="success">paid</Badge>}
+        <OrderStatusBadges status={order.status} is_paid={order.is_paid} payment_method={order.payment_method} />
         <span className="ml-auto text-sm text-[var(--muted)]">
           {new Date(order.created_at).toLocaleDateString()}
         </span>

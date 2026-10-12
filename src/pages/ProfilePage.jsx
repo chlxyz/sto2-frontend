@@ -102,10 +102,17 @@ export default function ProfilePage() {
           )}
         </div>
         <FormField label="Contact name (full name)" value={fullName} onChange={(e) => setFullName(e.target.value)} autoComplete="name" />
-        <AddressBook mode="manage" />
         <p className="text-xs text-[var(--muted)]">Signed in as {user?.email}. Map pinning arrives with the profile upgrade.</p>
         <div><Button type="submit" loading={busy}>Save profile</Button></div>
       </form>
+
+      {/* Outside the profile form on purpose: AddressBook renders its own <form>,
+          and a form may not contain another form. Nested, the inner submit was
+          resolved against the wrong form and the browser navigated natively,
+          reloading the page with nothing saved. */}
+      <div className="mt-5 grid max-w-xl gap-4 rounded-[4px] border border-[var(--border)] bg-[var(--surface)] p-6">
+        <AddressBook mode="manage" />
+      </div>
     </ShopTemplate>
   )
 }

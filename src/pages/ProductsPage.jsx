@@ -67,8 +67,10 @@ export default function ProductsPage() {
     try {
       await api.post('/cart', { product_id: product.id, quantity, color_id: colorId, size_id: sizeId })
       notifyCartChanged()
-    } catch {
-      setError('Could not add to cart.')
+    } catch (err) {
+      // Server already returns actionable text ("Please choose a size.",
+      // "Product is out of stock."); don't throw it away.
+      setError(err.response?.data?.message || 'Could not add to cart.')
       throw new Error('add-to-cart-failed')
     } finally {
       setAddingId(null)

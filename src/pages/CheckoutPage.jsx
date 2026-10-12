@@ -19,14 +19,18 @@ export default function CheckoutPage() {
   const [codes, setCodes] = useState([])
   const [dest, setDest] = useState(null)
   const [placing, setPlacing] = useState(false)
+  const [busyVoucher, setBusyVoucher] = useState(false)
 
-  const load = useCallback(async (applied = codes) => {
+  // Mount only. Voucher edits go through reQuote(), so this deliberately takes
+  // no argument and has no deps -- depending on `codes` would re-fire the mount
+  // effect on every voucher change and double-request the summary.
+  const load = useCallback(async () => {
     setLoading(true)
     setError('')
     try {
       const [{ data: items }, { data: q }] = await Promise.all([
         api.get('/cart'),
-        api.get('/cart/summary', { params: { voucher_codes: applied } }),
+        api.get('/cart/summary', { params: { voucher_codes: [] } }),
       ])
       setLines(items)
       setQuote(q)
@@ -35,7 +39,7 @@ export default function CheckoutPage() {
     } finally {
       setLoading(false)
     }
-  }, [codes])
+  }, [])
 
   useEffect(() => { load() }, [load])
 
@@ -70,19 +74,48 @@ export default function CheckoutPage() {
     }
   }
 
-  const addVoucher = () => {
-    const clean = code.trim().toUpperCase()
-    if (!clean || codes.includes(clean)) return
-    const next = [...codes, clean]
-    setCodes(next)
-    setCode('')
-    load(next)
+  // Vouchers only ever change the quote, never the cart lines, so re-quote
+  // alone instead of reload() -- which would blank the page to a skeleton.
+  const reQuote = async (applied) => {
+    const { data } = await api.get('/cart/summary', { params: { voucher_codes: applied } })
+    setQuote(data)
+    return data
   }
 
-  const removeVoucher = (c) => {
+  // Throws (422) on any voucher the server rejects, so the chip list is only
+  // updated after the server has confirmed it. Adding optimistically left the
+  // bad code in the list next to the "invalid" alert, and it was then sent to
+  // /cart/checkout where it failed the order a second time.
+  const addVoucher = async () => {
+    const clean = code.trim().toUpperCase()
+    if (!clean || busyVoucher || codes.includes(clean)) return
+
+    setBusyVoucher(true)
+    setError('')
+    try {
+      const next = [...codes, clean]
+      await reQuote(next)
+      setCodes(next)
+      setCode('')
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Could not apply voucher.')
+    } finally {
+      setBusyVoucher(false)
+    }
+  }
+
+  const removeVoucher = async (c) => {
     const next = codes.filter((x) => x !== c)
-    setCodes(next)
-    load(next)
+    setError('')
+    setBusyVoucher(true)
+    try {
+      await reQuote(next)
+      setCodes(next)
+    } catch (err) {
+      setError(err.response?.data?.message ?? 'Could not remove voucher.')
+    } finally {
+      setBusyVoucher(false)
+    }
   }
 
   return (
@@ -128,7 +161,7 @@ export default function CheckoutPage() {
                 placeholder="Voucher code"
                 className="w-full rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3 py-2 text-sm uppercase outline-none placeholder:normal-case placeholder:text-[var(--muted)] focus:border-[var(--accent)]"
               />
-              <Button tone="ghost" onClick={addVoucher} className="shrink-0 px-4 py-2 text-[13px]">Apply</Button>
+              <Button tone="ghost" onClick={addVoucher} loading={busyVoucher} className="shrink-0 px-4 py-2 text-[13px]">Apply</Button>
             </div>
             {codes.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1.5">

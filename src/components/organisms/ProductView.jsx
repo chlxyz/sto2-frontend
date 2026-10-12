@@ -3,10 +3,12 @@ import Badge from '../atoms/Badge.jsx'
 import Button from '../atoms/Button.jsx'
 import Price from '../atoms/Price.jsx'
 import QuantityStepper from '../atoms/QuantityStepper.jsx'
+import HintPopover from '../atoms/HintPopover.jsx'
 import ImageCarousel from '../molecules/ImageCarousel.jsx'
 import SizeChartModal from '../molecules/SizeChartModal.jsx'
 import SizePicker from '../molecules/SizePicker.jsx'
 import RelatedGrid from './RelatedGrid.jsx'
+import { capFor, fit } from '../../lib/stock.js'
 
 const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })
 
@@ -16,6 +18,7 @@ export default function ProductView({ product, related, onClose, onView, onAdd, 
   const [quantity, setQuantity] = useState(1)
   const [colorId, setColorId] = useState(null)
   const [sizeId, setSizeId] = useState(firstInStock)
+  const [hint, setHint] = useState('')
   const [imgIndex, setImgIndex] = useState(0)
   const [chartOpen, setChartOpen] = useState(false)
   const [closing, setClosing] = useState(false)
@@ -35,6 +38,7 @@ export default function ProductView({ product, related, onClose, onView, onAdd, 
     setQuantity(1)
     setColorId(null)
     setSizeId(product.sizes?.find((s) => s.stock > 0)?.id ?? null)
+    setHint('')
     setImgIndex(0)
     setChartOpen(false)
     topRef.current?.scrollIntoView()
@@ -44,6 +48,28 @@ export default function ProductView({ product, related, onClose, onView, onAdd, 
   const sale = product.discount_percent > 0
   const color = product.colors?.find((c) => c.id === colorId)
   const images = color?.image_url ? [{ id: `c${color.id}`, url: color.image_url }, ...product.images] : product.images
+
+  // Clamp in the same update as the size: switching XL(5) -> L(2) at qty 5 has
+  // to drop to 2, or the stepper sits above its own max.
+  const pickSize = (id) => {
+    setSizeId(id)
+    setQuantity((q) => fit(q, product, id))
+    setHint('')
+  }
+
+  // Nudge instead of submitting. Keeps the sheet open on a missing size, which
+  // the generic page-level alert could not do.
+  const add = async () => {
+    if (sized && !sizeId) return setHint('Choose a size first')
+    if (sized && !product.sizes.find((s) => s.id === sizeId)?.stock) return setHint('Out of stock')
+    setHint('')
+    try {
+      await onAdd(product, quantity, colorId, sizeId)
+      close()
+    } catch {
+      /* error surfaces on the page behind */
+    }
+  }
 
   useEffect(() => {
     const onKey = (e) => { if (e.key === 'Escape' && !chartOpen) close() }
@@ -106,7 +132,7 @@ export default function ProductView({ product, related, onClose, onView, onAdd, 
 
             {sized && (
               <div className="mt-2">
-                <SizePicker sizes={product.sizes} value={sizeId} onChange={setSizeId} />
+                <SizePicker sizes={product.sizes} value={sizeId} onChange={pickSize} />
                 {product.size_chart && (
                   <button
                     type="button"
@@ -137,6 +163,8 @@ export default function ProductView({ product, related, onClose, onView, onAdd, 
                       title={c.name}
                       aria-label={`Color ${c.name}`}
                       aria-pressed={colorId === c.id}
+                      // Re-clicking the chosen swatch clears the color. See the
+                      // matching note in ProductCard.jsx.
                       onClick={() => setColorId(colorId === c.id ? null : c.id)}
                       className={`h-8 w-8 rounded-full border transition ${colorId === c.id ? 'border-[var(--text)] ring-1 ring-[var(--text)] ring-offset-2 ring-offset-[var(--bg)]' : 'border-[var(--border)]'}`}
                       style={{ background: c.hex || 'var(--muted)' }}
@@ -148,16 +176,15 @@ export default function ProductView({ product, related, onClose, onView, onAdd, 
 
             {/* measurements per size plug in beside the chart next */}
             {!out && (
-              <div className="mt-8 flex items-center gap-4">
-                <QuantityStepper value={quantity} onChange={setQuantity} max={Math.max(1, sizeId ? product.sizes?.find((s) => s.id === sizeId)?.stock ?? 1 : product.quantity)} />
-                <Button
-                  onClick={async () => { try { await onAdd(product, quantity, colorId, sizeId); close() } catch { /* error surfaces on the page behind */ } }}
-                  loading={adding}
-                  className="flex-1 py-3"
-                >
-                  Add to cart
-                </Button>
-              </div>
+<div className="relative mt-8 flex items-center gap-4">
+              <HintPopover show={Boolean(hint)} tone={hint === 'Out of stock' ? 'warn' : 'hint'}>
+                {hint === 'Choose a size first' ? 'Choose a size' : hint}
+              </HintPopover>
+              <QuantityStepper value={quantity} onChange={setQuantity} max={capFor(product, sizeId)} />
+              <Button onClick={add} loading={adding} className="flex-1 py-3">
+                Add to cart
+              </Button>
+            </div>
             )}
             {out && <p className="mt-8"><Badge tone="warn">Sold out</Badge></p>}
           </div>

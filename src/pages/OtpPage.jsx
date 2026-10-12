@@ -47,7 +47,8 @@ export default function OtpPage() {
       if (err.response?.status === 429) {
         setError('Too many requests. Wait a minute and try again.')
       } else {
-        setError('Could not send a code. Check the address and try again.')
+        // Server failures (503 delivery, 500 crash) are not address problems.
+        setError(err.response?.data?.message || 'Could not send a code. Check the address and try again.')
       }
     } finally {
       setBusy(false)

@@ -27,12 +27,13 @@ export default function CartPage() {
   useEffect(() => { load() }, [load])
 
   const mutate = async (fn) => {
+    setError('')
     try {
       await fn()
       notifyCartChanged()
       load()
-    } catch {
-      setError('Cart update failed.')
+    } catch (err) {
+      setError(err.response?.data?.message || 'Cart update failed.')
     }
   }
 
@@ -63,6 +64,7 @@ export default function CartPage() {
           <CartList
             items={items}
             onQuantity={(item, q) => mutate(() => api.patch(`/cart/${item.id}`, { quantity: q }))}
+            onVariant={(item, patch) => mutate(() => api.patch(`/cart/${item.id}`, { quantity: item.quantity, ...patch }))}
             onRemove={(item) => mutate(() => api.delete(`/cart/${item.id}`))}
           />
           <CartSummary count={count} total={total} onCheckout={checkout} checkingOut={checkingOut} />

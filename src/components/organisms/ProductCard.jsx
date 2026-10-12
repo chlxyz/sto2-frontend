@@ -3,6 +3,7 @@ import Price from '../atoms/Price.jsx'
 import ImageCarousel from '../molecules/ImageCarousel.jsx'
 import ProductCardActions from '../molecules/ProductCardActions.jsx'
 import SizePicker from '../molecules/SizePicker.jsx'
+import { fit } from '../../lib/stock.js'
 
 const fmtDate = (d) => new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
 
@@ -10,6 +11,13 @@ export default function ProductCard({ product, onAdd, adding, onView }) {
   const [quantity, setQuantity] = useState(1)
   const [colorId, setColorId] = useState(null)
   const [sizeId, setSizeId] = useState(product.sizes?.find((s) => s.stock > 0)?.id ?? null)
+
+  // Clamp in the same update as the size, so a smaller size can never leave the
+  // stepper showing a quantity above its own stock.
+  const pickSize = (id) => {
+    setSizeId(id)
+    setQuantity((q) => fit(q, product, id))
+  }
   const out = product.quantity <= 0
   const sale = product.discount_percent > 0
   const color = product.colors?.find((c) => c.id === colorId)
@@ -49,6 +57,9 @@ export default function ProductCard({ product, onAdd, adding, onView }) {
                 title={c.name}
                 aria-label={`Color ${c.name}`}
                 aria-pressed={colorId === c.id}
+                // Re-clicking the chosen swatch clears the color. Intentional --
+                // the cart's ColorSelect is the unambiguous place to change or
+                // unset a variant once it is on a line.
                 onClick={() => setColorId(colorId === c.id ? null : c.id)}
                 className={`h-5 w-5 rounded-full border transition ${colorId === c.id ? 'border-[var(--text)] ring-1 ring-[var(--text)] ring-offset-2 ring-offset-[var(--bg)]' : 'border-[var(--border)]'}`}
                 style={{ background: c.hex || 'var(--muted)' }}
@@ -57,14 +68,15 @@ export default function ProductCard({ product, onAdd, adding, onView }) {
           </div>
         )}
         {product.sizes?.length > 0 && (
-          <SizePicker compact sizes={product.sizes} value={sizeId} onChange={setSizeId} />
+          <SizePicker compact sizes={product.sizes} value={sizeId} onChange={pickSize} />
         )}
         {!out && (
           <ProductCardActions
+            product={product}
             quantity={quantity}
             onQuantity={setQuantity}
             adding={adding}
-            max={product.quantity}
+            sizeId={sizeId}
             onAdd={() => onAdd(product, quantity, colorId, sizeId).catch(() => {})}
           />
         )}
